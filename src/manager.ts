@@ -1,5 +1,5 @@
 import { Pattern, parsePattern, SegmentState, closestSegment } from './pattern';
-import { K_RIGHT, K_LEFT, K_UP, K_DOWN, K_ESC, K_SPACE } from './const';
+import { K_RIGHT, K_LEFT, K_UP, K_DOWN, K_ESC, K_SPACE, K_TAB, K_BACKSPACE } from './const';
 import { Parts, PartsSection, drToParts, partsToDr } from './parts';
 import { segmentRe, Segment, formatSegment, segmentMax } from './segments';
 import { DateRange, DateOrRange, drGet, drSet, drIsEqual, drIsValid } from './range';
@@ -127,62 +127,76 @@ export function dateInputManager(input: HTMLInputElement) {
     }
   }
 
-  function copyAll() {
-    const { selectionStart, selectionEnd } = input;
-    input.setSelectionRange(0, input.value.length);
-    setTimeout(() => input.setSelectionRange(selectionStart!, selectionEnd!), 300);
+  function setPartData({ segment, section }: SegmentState, data: string): boolean {
+    const did = !isNaN(+data) && data.length <= segment.length;
+    if (did) partsSection[section]![segment] = +data;
+    return did;
   }
 
-  function handleMouseDown() {
-    mouseDown = true;
-  }
+  const events: Record<string, any> = {
+    mousedown() {
+      mouseDown = true;
+    },
+    mouseup(e: MouseEvent) {
+      mouseDown = false;
+      select(closestSegment(patternObj, input.selectionStart!));
+      e.preventDefault();
+    },
+    focus() {
+      if (!mouseDown) requestAnimationFrame(() => select(patternObj.pos[0]));
+    },
+    blur() {
+      mouseDown = false;
+      selected = undefined;
+      //Set the edited value or reset
+      finishEdit();
+    },
+    cut(e: Event) {
+      e.preventDefault();
+    },
+    copy() {
+      const { selectionStart, selectionEnd } = input;
+      input.setSelectionRange(0, input.value.length);
+      setTimeout(() => input.setSelectionRange(selectionStart!, selectionEnd!), 300);
+    },
+    paste(e: ClipboardEvent) {
+      e.preventDefault();
+      if (e.clipboardData) {
+        const data = e.clipboardData.getData('text/plain');
+        if (!selected || !setPartData(selected, data)) {
+          for (const ss of patternObj.all) {
+            if (ss.end > data.length) break;
+            setPartData(ss, data.substring(ss.start, ss.end));
+          }
+        }
+        setInputValue();
+        finishEdit(false);
+      }
+    },
+    keydown(e: KeyboardEvent) {
+      const code = e.keyCode;
+      const ctrl = e.ctrlKey || e.metaKey;
+      const key = e.key;
+      if (!selected || code === K_TAB) return;
+      if (code === K_RIGHT) !edit && select(closestSegment(patternObj, selected.end, 1));
+      else if (code === K_LEFT) !edit && select(closestSegment(patternObj, selected.start - 1, -1));
+      else if (code === K_UP) increaseCurrentSegment(1);
+      else if (code === K_DOWN) increaseCurrentSegment(-1);
+      else if (code === K_ESC) finishEdit();
+      else if (code === K_BACKSPACE) finishEdit();
+      else if (code !== K_SPACE && !isNaN(+key)) editCurrentSegment(key);
+      else if (key === 'c' && ctrl) return;
+      // copyAll();
+      else if (key === 'v' && ctrl) return;
+      e.preventDefault();
+    },
+  };
 
-  function handleMouseUp(e: MouseEvent) {
-    mouseDown = false;
-    select(closestSegment(patternObj, input.selectionStart!));
-    e.preventDefault();
-  }
-
-  function handleKeyDown(e: KeyboardEvent) {
-    console.log(e.key, e.keyCode, +e.key);
-
-    if (!selected) return;
-    if (e.keyCode === K_RIGHT) !edit && select(closestSegment(patternObj, selected.end, 1));
-    else if (e.keyCode === K_LEFT)
-      !edit && select(closestSegment(patternObj, selected.start - 1, -1));
-    else if (e.keyCode === K_UP) increaseCurrentSegment(1);
-    else if (e.keyCode === K_DOWN) increaseCurrentSegment(-1);
-    else if (e.keyCode === K_ESC) finishEdit();
-    // else if (e.keyCode === K_BACKSPACE) finishEdit();
-    else if (e.keyCode !== K_SPACE && !isNaN(+e.key)) editCurrentSegment(e.key);
-    else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) return copyAll();
-
-    // else return;
-    e.preventDefault();
-  }
-
-  function handleFocus() {
-    if (!mouseDown) select(patternObj.pos[0]);
-  }
-  function handleBlur() {
-    mouseDown = false;
-    selected = undefined;
-    //Set the edited value or reset
-    finishEdit();
-  }
-
-  input.addEventListener('mousedown', handleMouseDown);
-  input.addEventListener('keydown', handleKeyDown);
-  input.addEventListener('mouseup', handleMouseUp);
-  input.addEventListener('focus', handleFocus);
-  input.addEventListener('blur', handleBlur);
+  const eventList = Object.keys(events) as (keyof HTMLElementEventMap)[];
+  eventList.forEach(name => input.addEventListener(name, events[name]));
 
   function dispose() {
-    input.removeEventListener('mousedown', handleMouseDown);
-    input.removeEventListener('keydown', handleKeyDown);
-    input.removeEventListener('mouseup', handleMouseUp);
-    input.removeEventListener('focus', handleFocus);
-    input.removeEventListener('blur', handleBlur);
+    eventList.forEach(name => input.removeEventListener(name, events[name]));
   }
 
   return {

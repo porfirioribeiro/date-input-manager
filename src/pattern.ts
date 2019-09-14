@@ -11,6 +11,7 @@ export type SegmentState = {
 export interface Pattern {
   pattern: string;
   pos: (SegmentState | undefined)[];
+  all: SegmentState[];
   slices: SegmentPosition[];
 }
 
@@ -23,7 +24,7 @@ export function parsePattern(pattern: string, range?: string | false): Pattern {
   const firstSectionSize = pattern.length + (range ? range.length : 0);
 
   const pos = new Array(pat.length);
-
+  const all: SegmentState[] = [];
   let slices: SegmentPosition[] = [defaultPosByName()];
   if (range) slices.push(defaultPosByName());
 
@@ -39,11 +40,13 @@ export function parsePattern(pattern: string, range?: string | false): Pattern {
       segment,
     };
     pos.fill(ss, start, end);
+    all.push(ss);
     slices[section][segment] = [start, end];
   }
 
   return {
     pattern,
+    all,
     pos,
     slices,
   };
