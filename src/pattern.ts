@@ -2,17 +2,17 @@ import { segmentRe, Segment } from './segments';
 
 export type SegmentPosition = Record<Segment, [number, number]>;
 export type SegmentState = {
-  start: number;
-  end: number;
-  segment: Segment;
-  section: 0 | 1; // beginDate | endDate
+  _start: number;
+  _end: number;
+  _segment: Segment;
+  _section: 0 | 1; // beginDate | endDate
 };
 
 export interface Pattern {
-  pattern: string;
-  pos: (SegmentState | undefined)[];
-  all: SegmentState[];
-  slices: SegmentPosition[];
+  _pattern: string;
+  _pos: (SegmentState | undefined)[];
+  _all: SegmentState[];
+  _slices: SegmentPosition[];
 }
 
 function defaultPosByName(): SegmentPosition {
@@ -34,10 +34,10 @@ export function parsePattern(pattern: string, range?: string | false): Pattern {
     const segment = match[0] as Segment;
     const section = start >= firstSectionSize ? 1 : 0;
     const ss: SegmentState = {
-      start,
-      end,
-      section,
-      segment,
+      _start: start,
+      _end: end,
+      _section: section,
+      _segment: segment,
     };
     pos.fill(ss, start, end);
     all.push(ss);
@@ -45,10 +45,10 @@ export function parsePattern(pattern: string, range?: string | false): Pattern {
   }
 
   return {
-    pattern,
-    all,
-    pos,
-    slices,
+    _pattern: pattern,
+    _all: all,
+    _pos: pos,
+    _slices: slices,
   };
 }
 
@@ -64,13 +64,14 @@ export function closestSegment(
   dir: 1 | 0 | -1 = 0
 ): SegmentState | undefined {
   // return last segment if index is bigger or equals than the lenght of the patters
-  if (index >= segments.pos.length) return segments.pos[segments.pos.length - 1];
+  if (index >= segments._pos.length) return segments._pos[segments._pos.length - 1];
 
-  let seg = segments.pos[index];
+  let seg = segments._pos[index];
   let decI = index;
   let incI = index;
-  while (!seg && incI < segments.pos.length && decI > -1)
+  while (!seg && incI < segments._pos.length && decI > -1)
     seg =
-      (dir < 1 ? segments.pos[--decI] : undefined) || (dir > -1 ? segments.pos[++incI] : undefined);
+      (dir < 1 ? segments._pos[--decI] : undefined) ||
+      (dir > -1 ? segments._pos[++incI] : undefined);
   return seg;
 }

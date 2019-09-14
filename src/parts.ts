@@ -1,26 +1,24 @@
 import { Segment, segmentList } from './segments';
 import { dateGet } from './date';
-import { DateOrRange } from './range';
+import { DateOrRange, isArray } from './range';
 
 export type Parts = Record<Segment, number | undefined>;
 export type PartsSection = [Parts] | [Parts, Parts];
 
 function getPartsOfDate(date?: Date): Parts {
-  return segmentList.reduce(
-    (parts, segment) => ({
-      ...parts,
-      [segment]: date && dateGet(date, segment),
-    }),
-    {}
-  ) as Parts;
+  const parts: Parts = {} as any;
+  segmentList.forEach(segment => {
+    parts[segment] = date && dateGet(date, segment);
+  });
+  return parts;
 }
 
 export function drToParts(date: DateOrRange | undefined, range?: string | false): PartsSection {
   return range
-    ? Array.isArray(date)
+    ? isArray(date)
       ? [getPartsOfDate(date[0]), getPartsOfDate(date[1])]
       : [getPartsOfDate(), getPartsOfDate()]
-    : [getPartsOfDate(Array.isArray(date) ? date[0] : date)];
+    : [getPartsOfDate(isArray(date) ? date[0] : date)];
 }
 
 export function partsToDr(

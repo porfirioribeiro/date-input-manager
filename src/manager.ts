@@ -43,7 +43,7 @@ export function dateInputManager(input: HTMLInputElement) {
   function select(segment?: SegmentState) {
     if (segment) {
       selected = segment;
-      input.setSelectionRange(segment.start, segment.end);
+      input.setSelectionRange(segment._start, segment._end);
     }
   }
 
@@ -53,8 +53,8 @@ export function dateInputManager(input: HTMLInputElement) {
       if (
         edit !== undefined &&
         selected &&
-        segment == selected.segment &&
-        section === selected.section
+        segment == selected._segment &&
+        section === selected._section
       )
         return edit.padStart(segment.length, placeholderChar);
 
@@ -82,7 +82,7 @@ export function dateInputManager(input: HTMLInputElement) {
   function increaseCurrentSegment(ammount: number = 1) {
     if (edit || !selected) return;
 
-    const { section, segment } = selected;
+    const { _section: section, _segment: segment } = selected;
     const date = drGet(value, section);
 
     if (date) setValue(drSet(value, section, dateAdd(date, segment, ammount)));
@@ -90,7 +90,7 @@ export function dateInputManager(input: HTMLInputElement) {
 
   function editCurrentSegment(key: string) {
     if (!selected) return;
-    const { section, segment } = selected;
+    const { _section: section, _segment: segment } = selected;
 
     // const parts = partsSection.slice(0) as PartsSection;
     const max = segmentMax[segment];
@@ -111,7 +111,7 @@ export function dateInputManager(input: HTMLInputElement) {
     if (moveToNext) {
       partsSection[section]![segment] = +edit;
       finishEdit(false);
-      select(closestSegment(patternObj, selected.end, 1));
+      select(closestSegment(patternObj, selected._end, 1));
     }
   }
 
@@ -127,7 +127,10 @@ export function dateInputManager(input: HTMLInputElement) {
     }
   }
 
-  function setPartData({ segment, section }: SegmentState, data: string): boolean {
+  function setPartData(
+    { _segment: segment, _section: section }: SegmentState,
+    data: string
+  ): boolean {
     const did = !isNaN(+data) && data.length <= segment.length;
     if (did) partsSection[section]![segment] = +data;
     return did;
@@ -143,7 +146,7 @@ export function dateInputManager(input: HTMLInputElement) {
       e.preventDefault();
     },
     focus() {
-      if (!mouseDown) requestAnimationFrame(() => select(patternObj.pos[0]));
+      if (!mouseDown) requestAnimationFrame(() => select(patternObj._pos[0]));
     },
     blur() {
       mouseDown = false;
@@ -164,10 +167,11 @@ export function dateInputManager(input: HTMLInputElement) {
       if (e.clipboardData) {
         const data = e.clipboardData.getData('text/plain');
         if (!selected || !setPartData(selected, data)) {
-          for (const ss of patternObj.all) {
-            if (ss.end > data.length) break;
-            setPartData(ss, data.substring(ss.start, ss.end));
-          }
+          patternObj._all.some(ss => {
+            const done = ss._end > data.length;
+            if (!done) setPartData(ss, data.substring(ss._start, ss._end));
+            return done;
+          });
         }
         setInputValue();
         finishEdit(false);
@@ -178,8 +182,9 @@ export function dateInputManager(input: HTMLInputElement) {
       const ctrl = e.ctrlKey || e.metaKey;
       const key = e.key;
       if (!selected || code === K_TAB) return;
-      if (code === K_RIGHT) !edit && select(closestSegment(patternObj, selected.end, 1));
-      else if (code === K_LEFT) !edit && select(closestSegment(patternObj, selected.start - 1, -1));
+      if (code === K_RIGHT) !edit && select(closestSegment(patternObj, selected._end, 1));
+      else if (code === K_LEFT)
+        !edit && select(closestSegment(patternObj, selected._start - 1, -1));
       else if (code === K_UP) increaseCurrentSegment(1);
       else if (code === K_DOWN) increaseCurrentSegment(-1);
       else if (code === K_ESC) finishEdit();
