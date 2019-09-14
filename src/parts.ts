@@ -31,7 +31,7 @@ export function partsToDr(
     (acc, p) => {
       const v =
         p.yyyy !== undefined && p.MM !== undefined && p.dd !== undefined
-          ? new Date(p.yyyy, p.MM - 1, p.dd, p.HH || 0, p.mm || 0, p.ss || 0, p.fff || 0)
+          ? new Date(p.yyyy, p.MM - 1, p.dd, p.HH || 12, p.mm || 0, p.ss || 0, p.fff || 0)
           : undefined;
 
       return range ? (acc || []).concat(v) : v;
